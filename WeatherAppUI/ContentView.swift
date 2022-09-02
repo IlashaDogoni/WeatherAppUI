@@ -7,26 +7,57 @@
 
 import SwiftUI
 
-let backgroundGradient = LinearGradient(
-    colors: [Color.red, Color.blue],
-    startPoint: .top, endPoint: .bottom)
+let backgroundGradient = LinearGradient(gradient: Gradient(colors: [.blue, .white, .pink]), startPoint: .topLeading, endPoint: .bottomTrailing)
 
 
 
 struct ContentView: View {
     @State private var searchText = ""
+    var weatherManager = WeatherManager()
+   // var locationManager = CLLocationManager()
+    
     var body: some View {
+        ZStack{
+            
         VStack{
             HStack{
-                Image(systemName: "sun.max")
+                Spacer()
+                   
+                Button ( action: weatherManager.testFetching)
+                {Image(systemName: "location.circle.fill")
+                        .padding()
+                        .foregroundColor(.black)
+                }
+                                
                 Text("Searching for \(searchText)")
                                 .searchable(text: $searchText, prompt: "Look for something")
                                 .navigationTitle("Searchable Example")
+                                
+                Button ( action: weatherManager.testFetching)
+                {Image(systemName: "magnifyingglass")
+                        .padding()
+                        .foregroundColor(.black)
+                }
+                Spacer()
+                
             }
-            Text("dfsdf")
+            Spacer()
+            VStack {
+                
+                Image(systemName: "sun.max")
+            
+            HStack {
+                Text("21")
+                Text("°C")
+            }
+            Text("London")
         }
+            Spacer()
+        }
+    }
+        
         .background(backgroundGradient)
-            .padding()
+            
     }
 }
 
