@@ -8,68 +8,64 @@
 import Foundation
 import CoreLocation
 
-protocol WeatherManagerDelegate{
-    
-    func didUpdateWeather(_ weatherManager: WeatherManager, weather: WeatherModel)
-    func didFailedWithError(error: Error)
-}
 
-struct WeatherManager{
+
+class WeatherManager{
     
     let weatherURL = "https://api.openweathermap.org/data/2.5/weather?appid=cffe8f2301ea1150eeb83964531603cd&units=metric"
     
-    var delegate: WeatherManagerDelegate?
-    
-    func fetchWeather(cityName: String){
-        let urlString = "\(weatherURL)&q=\(cityName)"
-        performRequest(with: urlString)
-    }
-    
-    func testFetching() {
-        print("test")
-    }
-    
-    func fetchWeather(latitude: CLLocationDegrees, longitude: CLLocationDegrees){
-        let urlString  = "\(weatherURL)&lat=\(latitude)&lon=\(longitude)"
-        performRequest(with: urlString)
-    }
-    
-    func performRequest(with urlString: String) {
+    func getCurrentWeather(latitude: CLLocationDegrees, longitude: CLLocationDegrees) async throws -> ResponseBody {
+        guard let url = URL(string: "\(weatherURL)&lat=\(latitude)&lon=\(longitude)")
+        else { fatalError("Missing URL")}
         
-        if let url = URL(string: urlString){
-            
-            let session = URLSession(configuration: .default)
-            let task = session.dataTask(with: url) { data, response, error in
-                if error != nil{
-                    delegate?.didFailedWithError(error: error!)
-                    return
-                }
-                if let safeData = data{
-                    if let weather = parseJSON(safeData){
-                        self.delegate?.didUpdateWeather(self, weather: weather)
-                    }
-                }
-            }
-            task.resume()
-        }
+        let urlRequest = URLRequest(url: url)
+        
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { fatalError("Error fetching weather data") }
+        
+        let decodedData = try JSONDecoder().decode(ResponseBody.self, from: data)
+        
+        return decodedData
+    }
+}
+
+struct ResponseBody: Decodable {
+    var coord: CoordinatesResponse
+    var weather: [WeatherResponse]
+    var main: MainResponse
+    var name: String
+    var wind: WindResponse
+
+    struct CoordinatesResponse: Decodable {
+        var lon: Double
+        var lat: Double
+    }
+
+    struct WeatherResponse: Decodable {
+        var id: Double
+        var main: String
+        var description: String
+        var icon: String
+    }
+
+    struct MainResponse: Decodable {
+        var temp: Double
+        var feels_like: Double
+        var temp_min: Double
+        var temp_max: Double
+        var pressure: Double
+        var humidity: Double
     }
     
-    func parseJSON(_ weatherData: Data) -> WeatherModel? {
-        let decoder = JSONDecoder()
-        do{
-        let decodedData = try decoder.decode(WeatherData.self, from: weatherData)
-            let id = decodedData.weather[0].id
-            let temperature = decodedData.main.temp
-            let name =  decodedData.name
-            let weather = WeatherModel(conditionId: id, cityName: name, temperature: temperature)
-            return weather
-           
-        } catch {
-            delegate?.didFailedWithError(error: error)
-            return nil
-        }
+    struct WindResponse: Decodable {
+        var speed: Double
+        var deg: Double
     }
-    
-    
-    
+}
+
+extension ResponseBody.MainResponse {
+    var feelsLike: Double { return feels_like }
+    var tempMin: Double { return temp_min }
+    var tempMax: Double { return temp_max }
 }
